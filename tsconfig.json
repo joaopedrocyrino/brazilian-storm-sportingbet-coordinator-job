@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "outDir": "dist",
+        "skipLibCheck": true,
         "experimentalDecorators": true,
         "rootDir": ".",
         "module": "commonjs",
@@ -16,6 +17,9 @@
             ]
         },
     },
+    "include": [
+        "src/*"
+    ],
     "exclude": [
         "node_modules",
         "./node_modules",

@@ -51,6 +51,7 @@
     "tsc-watch": "tsc -w",
     "compile": "yarn tsc && node dist/src/index.js",
     "dev": "nodemon",
-    "start": "node dist/src/index.js"
+    "start": "node dist/src/index.js",
+    "build": "yarn tsc"
   }
 }
