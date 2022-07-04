@@ -37,58 +37,58 @@ class MatchServices extends Services {
       })
 
       const matches = await MatchQuery.getToInsert()
+      console.log('matches to insert: ', matches)
 
       const provider = new Provider(process.env.COORDINATOR_PRIV_KEY, process.env.RPCURL)
       const web3 = new Web3(provider)
       // @ts-expect-error
       const matchContract = new web3.eth.Contract(MatchesJson.abi, process.env.MATCH_ADDRESS)
 
-      const insert: {
-        [k: number]: {
-          index: number
-          matches: Array<{
-            house: string
-            visitor: string
-            start: number
-            houseGoals: number
-            visitorGoals: number
-            closed: boolean
-            resultsFullfilled: boolean
-          }>
-        }
+      const insertData: {
+        [k: number]: Array<{
+          id: string
+          house: string
+          visitor: string
+          start: number
+          houseGoals: number
+          visitorGoals: number
+          closed: boolean
+          resultsFullfilled: boolean
+        }>
       } = {}
 
-      const matchArr: MatchModel[] = []
-
-      await Promise.all(matches.map(async m => {
+      matches.forEach(({ house, start, visitor, champId, id }) => {
         const record = {
-          house: m.house,
-          visitor: m.visitor,
-          start: moment(m.start).unix(),
+          id,
+          house,
+          start: moment(start).unix(),
+          visitor,
           houseGoals: 0,
           visitorGoals: 0,
           closed: false,
           resultsFullfilled: false
         }
 
-        if (insert[m.champId]) {
-          insert[m.champId].matches.push(record)
+        if (insertData[champId]) {
+          insertData[champId].push(record)
         } else {
-          const index = await matchContract.methods.matchIds(m.champId).call()
-          insert[m.champId] = { index, matches: [record] }
+          insertData[champId] = [record]
         }
+      })
 
-        const match = await MatchQuery.getOne(m.id)
-        match.inserted = true
-        match.matchId = insert[m.champId].index
+      const matchArr: MatchModel[] = []
 
-        matchArr.push(match)
+      await Promise.all(Object.keys(insertData).map(async k => {
+        const index: number = await matchContract.methods.matchIds(k).call()
 
-        insert[m.champId].index++
-      }))
+        await Promise.all(insertData[k].map(async (data, i: number) => {
+          const match = await MatchQuery.getOne(data.id)
+          match.inserted = true
+          match.matchId = index + i
+          matchArr.push(match)
+        }))
 
-      await Promise.all(Object.keys(insert).map(async k => {
-        await matchContract.methods.insertMatches(k, insert[k].matches).send({ from: process.env.COORDINATOR_ADDRESS })
+        await matchContract.methods.insertMatches(k, insertData[k].map(({ id, ...rest }, i: number) => ({ id: index + i, ...rest }))).send({ from: process.env.COORDINATOR_ADDRESS })
       }))
 
       await MatchModel.save(matchArr)

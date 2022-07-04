@@ -46,7 +46,8 @@ class ChampionshipServices extends Services {
 
       const index: number = await contract.methods.champIds().call()
 
-      await contract.methods.insertChampionships(championships.map(({ name, season, country }) => ({
+      await contract.methods.insertChampionships(championships.map(({ name, season, country }, i) => ({
+        id: index + i,
         name,
         season,
         country,
@@ -62,7 +63,10 @@ class ChampionshipServices extends Services {
       await ChampionshipModel.save(championships)
 
       return true
-    } catch { return false }
+    } catch (e) {
+      console.log(e)
+      return false
+    }
   }
 
   // async closeChampionship ({ token, ...req }): Promise<boolean> {
