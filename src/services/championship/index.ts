@@ -68,13 +68,6 @@ class ChampionshipServices extends Services {
       return false
     }
   }
-
-  // async closeChampionship ({ token, ...req }): Promise<boolean> {
-  //   try {
-
-  //     return true
-  //   } catch { return false }
-  // }
 };
 
 export default new ChampionshipServices()
