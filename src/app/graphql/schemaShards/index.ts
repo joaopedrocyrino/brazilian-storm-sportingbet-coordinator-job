@@ -1,6 +1,10 @@
 import { mergeRawSchemas } from '../utils/mergeRawSchemas'
-import users from './users'
+import teams from './teams'
+import championships from './championships'
+import match from './match'
 
 export default mergeRawSchemas(
-  users
+  teams,
+  championships,
+  match
 )

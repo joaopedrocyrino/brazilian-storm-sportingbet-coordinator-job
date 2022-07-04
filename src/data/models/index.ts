@@ -1,1 +1,5 @@
-export { default as UserModel } from './UserModel'
+export { default as TeamModel } from './TeamModel'
+export { default as ChampionshipModel } from './ChampionshipModel'
+export { default as MatchModel } from './MatchModel'
+export { default as ToInsertViewModel } from './ToInsertViewModel'
+export { default as ToFullfillViewModel } from './ToFullfillViewModel'
