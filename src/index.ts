@@ -1,4 +1,3 @@
-import 'reflect-metadata'
 import Database from './data'
 import app from './app'
 import cron from './cron'
