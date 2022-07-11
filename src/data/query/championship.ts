@@ -1,30 +1,32 @@
-import { FindConditions, FindOperator, ILike } from 'typeorm'
-
-import { ChampionshipModel } from '../models'
+import Database from '..'
+import { Championship } from '../../entities'
 
 class ChampionshipQuery {
-  async create (team: Partial<ChampionshipModel>): Promise<void> {
-    const newChampionship = new ChampionshipModel(team)
-
-    await newChampionship.save()
+  async create (champ: Partial<Championship>): Promise<void> {
+    await Database.query(
+      'INSERT INTO championship (id, name, season, country) VALUES ' +
+    `('${champ.id}', '${champ.name}', ${champ.season}, '${champ.country}')`
+    )
   }
 
-  async getMany (
-    search?: string,
-    fields?: { [k: string]: FindOperator<any> } | Partial<ChampionshipModel>
-  ): Promise<ChampionshipModel[]> {
-    const baseWhere = { ...fields }
+  async getMany (): Promise<Championship[]> {
+    const champs = await Database.query<Championship>(
+      'SELECT * FROM championship WHERE inserted = \'f\' AND closed = \'f\''
+    )
 
-    let where: Array<FindConditions<ChampionshipModel>> | FindConditions<ChampionshipModel> = { ...baseWhere }
+    return champs
+  }
 
-    if (search) {
-      where = Object.keys(ChampionshipModel)
-        .map(k => ({ ...baseWhere, [k]: ILike(`%${search}%`) }))
-    }
+  async insert (ids: string[]): Promise<void> {
+    let queryString = 'UPDATE championship SET inserted = \'t\' WHERE id IN ('
 
-    const championships = await ChampionshipModel.find({ where })
+    ids.forEach(id => { queryString += `'${id}', ` })
 
-    return championships
+    queryString = queryString.slice(0, -2)
+
+    queryString += ')'
+
+    await Database.query(queryString)
   }
 }
 

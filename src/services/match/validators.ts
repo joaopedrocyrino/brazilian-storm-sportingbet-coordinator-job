@@ -1,7 +1,7 @@
 import Joi from 'joi'
 
 export const createValidator = Joi.object({
-  championshipId: Joi.string().guid().required(),
+  champId: Joi.string().guid().required(),
   houseId: Joi.string().guid().required(),
   visitorId: Joi.string().guid().required(),
   start: Joi.string().required(),

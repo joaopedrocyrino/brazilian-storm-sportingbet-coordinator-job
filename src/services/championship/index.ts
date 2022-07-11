@@ -2,9 +2,8 @@ import 'dotenv/config'
 import Provider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 
-import MatchesJson from '../../../artifacts/contracts/Matches.sol/Matches.json'
+import MatchesJson from '../artifacts/contracts/Matches.sol/Matches.json'
 
-import { ChampionshipModel } from '../../data/models'
 import { ChampionshipQuery } from '../../data/query'
 import { CreateChampionship } from '../../dto'
 import { createValidator } from './validators'
@@ -33,10 +32,7 @@ class ChampionshipServices extends Services {
         scope: true
       })
 
-      const championships = await ChampionshipQuery.getMany(
-        undefined,
-        { inserted: false, closed: false }
-      )
+      const championships = await ChampionshipQuery.getMany()
 
       const provider = new Provider(process.env.COORDINATOR_PRIV_KEY, process.env.RPCURL)
       const web3 = new Web3(provider)
@@ -44,23 +40,13 @@ class ChampionshipServices extends Services {
       // @ts-expect-error
       const contract = new web3.eth.Contract(MatchesJson.abi, process.env.MATCH_ADDRESS)
 
-      const index: number = await contract.methods.champIds().call()
-
-      await contract.methods.insertChampionships(championships.map(({ name, season, country }, i) => ({
-        id: index + i,
+      await contract.methods.insertChampionships(championships.map(({ name, season, country }) => ({
         name,
         season,
-        country,
-        closed: false,
-        openMatchIndex: 0
+        country
       }))).send({ from: process.env.COORDINATOR_ADDRESS })
 
-      championships.forEach((c, i) => {
-        c.inserted = true
-        c.champId = index + i
-      })
-
-      await ChampionshipModel.save(championships)
+      await ChampionshipQuery.insert(championships.map(c => c.id))
 
       return true
     } catch (e) {

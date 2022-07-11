@@ -1,19 +1,39 @@
 import 'dotenv/config'
-import { createConnection } from 'typeorm'
-import * as entities from './models'
+import { Pool } from 'pg'
 
-class TypeOrmDatabase {
-  constructor (private readonly url: string) {}
+class Database {
+  private pool: Pool
+  private graph: Pool
 
-  async connect (): Promise<void> {
-    await createConnection({
-      type: 'postgres',
-      url: this.url,
-      entities: Object.keys(entities).map(key => entities[key]),
-      logging: true,
-      ssl: false
+  init (): void {
+    this.pool = new Pool({
+      connectionString: process.env.DATABASE_STRING
     })
+
+    this.graph = new Pool({
+      connectionString: process.env.GRAPH_DATABASE_STRING
+    })
+  }
+
+  async query<T>(queryString: string): Promise<T[]> {
+    const client = await this.pool.connect()
+
+    const res: { rows: T[] } = await client.query(queryString)
+
+    client.release()
+
+    return res.rows
+  }
+
+  async graphQuery<T>(queryString: string): Promise<T[]> {
+    const client = await this.graph.connect()
+
+    const res: { rows: T[] } = await client.query(queryString)
+
+    client.release()
+
+    return res.rows
   }
 }
 
-export default new TypeOrmDatabase(process.env.DATABASE_STRING)
+export default new Database()

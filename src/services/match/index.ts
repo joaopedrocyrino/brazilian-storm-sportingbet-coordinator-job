@@ -2,13 +2,12 @@ import Provider from '@truffle/hdwallet-provider'
 import moment from 'moment'
 import Web3 from 'web3'
 
-import BrazilianStorm from '../../../artifacts/contracts/BrazilianStorm.sol/BrazilianStormSportingbet.json'
-import MatchesJson from '../../../artifacts/contracts/Matches.sol/Matches.json'
-import BetJson from '../../../artifacts/contracts/Bets.sol/Bets.json'
+import BrazilianStorm from '../artifacts/contracts/BrazilianStorm.sol/BrazilianStormSportingbet.json'
+import MatchesJson from '../artifacts/contracts/Matches.sol/Matches.json'
+import BetJson from '../artifacts/contracts/Bets.sol/Bets.json'
 
 import { createValidator, fullfillValidator } from './validators'
 import { CreateMatch, FullfillResults } from '../../dto'
-import { MatchModel } from '../../data/models'
 import { MatchQuery } from '../../data/query'
 import { ZK } from '../../frameworks'
 import Services from '..'
@@ -37,7 +36,6 @@ class MatchServices extends Services {
       })
 
       const matches = await MatchQuery.getToInsert()
-      console.log('matches to insert: ', matches)
 
       const provider = new Provider(process.env.COORDINATOR_PRIV_KEY, process.env.RPCURL)
       const web3 = new Web3(provider)
@@ -57,9 +55,8 @@ class MatchServices extends Services {
         }>
       } = {}
 
-      matches.forEach(({ house, start, visitor, champId, id }) => {
+      matches.forEach(({ house, start, visitor, champId }) => {
         const record = {
-          id,
           house,
           start: moment(start).unix(),
           visitor,
@@ -76,22 +73,11 @@ class MatchServices extends Services {
         }
       })
 
-      const matchArr: MatchModel[] = []
-
       await Promise.all(Object.keys(insertData).map(async k => {
-        const index: number = await matchContract.methods.matchIds(k).call()
-
-        await Promise.all(insertData[k].map(async (data, i: number) => {
-          const match = await MatchQuery.getOne(data.id)
-          match.inserted = true
-          match.matchId = index + i
-          matchArr.push(match)
-        }))
-
-        await matchContract.methods.insertMatches(k, insertData[k].map(({ id, ...rest }, i: number) => ({ id: index + i, ...rest }))).send({ from: process.env.COORDINATOR_ADDRESS })
+        await matchContract.methods.insertMatches(k, insertData[k]).send({ from: process.env.COORDINATOR_ADDRESS })
       }))
 
-      await MatchModel.save(matchArr)
+      await MatchQuery.insert(matches.map(m => m.id))
 
       return true
     } catch (e) {
@@ -108,7 +94,7 @@ class MatchServices extends Services {
       req
     })
 
-    await MatchQuery.update({ ...req, fullfilled: true })
+    await MatchQuery.fullfillResults(req.id, req.house, req.visitor)
 
     return true
   }
@@ -140,14 +126,8 @@ class MatchServices extends Services {
       const brazilianContract = new web3.eth.Contract(BrazilianStorm.abi, process.env.BRAZILIAN_ADDRESS)
 
       const closeMatches = []
-      const matchArr: MatchModel[] = []
 
-      await Promise.all(matchesToFullfill.map(async ({ house, visitor, champId, matchId, id }) => {
-        const match = await MatchQuery.getOne(id)
-        match.closed = true
-
-        matchArr.push(match)
-
+      await Promise.all(matchesToFullfill.map(async ({ house, visitor, champId, matchId }) => {
         const bets = await betContract.methods.getMatchBets(champId, matchId).call()
 
         let winnerLost: bigint = 0n
@@ -203,7 +183,7 @@ class MatchServices extends Services {
 
       await matchContract.methods.closeMatches(closeMatches)
 
-      await MatchModel.save(matchArr)
+      await MatchQuery.close(matchesToFullfill.map(m => m.id))
 
       return true
     } catch { return false }

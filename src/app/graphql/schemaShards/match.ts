@@ -19,7 +19,7 @@ type Match {
 }
 
 input CreateMatch {
-  championshipId: ID!
+  champId: ID!
   houseId: ID!
   visitorId: ID!
   start: String!
